@@ -1,0 +1,72 @@
+FROM php:8.2-apache
+
+# Set environment variables to allow Composer to run as root and enable plugins
+ENV COMPOSER_ALLOW_SUPERUSER=1
+ENV COMPOSER_DISABLE_PLUGINS=0
+
+# Set ServerName to localhost
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
+
+# Update package lists
+RUN apt-get update
+
+# Install required packages
+RUN apt-get install -y --no-install-recommends locales apt-utils git libicu-dev g++ libpng-dev libxml2-dev libzip-dev libonig-dev libxslt-dev unzip wget curl zsh
+
+# Configure locales
+RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
+RUN echo "fr_FR.UTF-8 UTF-8" >> /etc/locale.gen
+RUN locale-gen
+
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php -- && mv composer.phar /usr/local/bin/composer
+
+# Install Symfony CLI
+RUN curl -sS https://get.symfony.com/cli/installer | bash
+RUN mv /root/.symfony5/bin/symfony /usr/local/bin/symfony
+
+# Configure and install PHP extensions
+RUN docker-php-ext-configure intl
+RUN docker-php-ext-install pdo pdo_mysql opcache intl zip calendar dom mbstring gd xsl
+
+# Download and install APCu manually
+RUN wget https://pecl.php.net/get/apcu-5.1.21.tgz
+RUN tar -xf apcu-5.1.21.tgz
+RUN docker-php-source extract
+RUN mv apcu-5.1.21 /usr/src/php/ext/apcu
+RUN docker-php-ext-install apcu
+RUN docker-php-source delete
+RUN docker-php-ext-enable apcu
+
+# Install Oh My Zsh
+RUN wget https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O - | zsh || true
+
+# Install Powerlevel10k theme
+RUN git clone --depth=1 https://github.com/romkatv/powerlevel10k.git $ZSH_CUSTOM/themes/powerlevel10k
+
+# Set Zsh as the default shell
+RUN chsh -s $(which zsh)
+
+# Install Oh My Posh
+RUN wget https://github.com/JanDeDobbeleer/oh-my-posh/releases/latest/download/posh-linux-amd64 -O /usr/local/bin/oh-my-posh \
+    && chmod +x /usr/local/bin/oh-my-posh
+
+# Download a Oh My Posh theme 
+RUN mkdir -p /etc/oh-my-posh/themes
+RUN wget https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/paradox.omp.json -O /etc/oh-my-posh/themes/paradox.omp.json
+
+# Copy configuration files
+COPY ./ohMyPosh/.zshrc /root/.zshrc
+COPY ./ohMyPosh/p10k.zsh /root/.p10k.zsh
+
+# Configure .bashrc to switch to Zsh for root
+RUN echo "if [ -t 1 ]; then exec zsh; fi" >> /root/.bashrc
+
+RUN apt-get install vim -yq
+
+# Copy Apache configuration
+COPY ./docker/apache.conf /etc/apache2/sites-available/000-default.conf
+
+EXPOSE 80
+
+WORKDIR /var/www/app

@@ -1,0 +1,25 @@
+# controllers:
+#     resource:
+#         path: ../src/Controller/
+#         namespace: App\Controller
+#     type: attribute
+
+subscription_creation:
+    path:    /subscription
+    methods: POST
+    controller: App\Controller\SubscriptionCreationController::index
+
+subscription_update:
+    path:    /subscription/{idSubscription}
+    methods: PUT
+    controller: App\Controller\SubscriptionUpdateController::index
+
+subscription_removal:
+    path:    /subscription/{idSubscription}
+    methods: DELETE
+    controller: App\Controller\SubscriptionRemovalController::index
+
+subscription:
+    path:    /subscription/{idContact}
+    methods: GET
+    controller: App\Controller\SubscriptionFetchController::index
